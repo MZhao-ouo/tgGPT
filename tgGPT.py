@@ -55,7 +55,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if index % 16 == 0:
             await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id)
     if index % 16 != 0:
-        await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id)
+        await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id, parse_mode="Markdown")
     await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=reply_id, reply_markup=accomplished_btn)
     
     ai_clients[chat_id].messages.append({"role": "assistant", "content": reply_text})
@@ -83,7 +83,7 @@ async def retry(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if index % 16 == 0:
             await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id)
     if index % 16 != 0:
-        await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id)
+        await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id, parse_mode="Markdown")
     await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=reply_id, reply_markup=retry_btn_end)
     
     ai_clients[chat_id].messages.append({"role": "assistant", "content": reply_text})
