@@ -29,6 +29,7 @@ async def new(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
+    await context.bot.send_chat_action(chat_id=chat_id, action="typing")
     if chat_id not in ai_clients:
         ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
     if chat_id in lastest_message_id:
@@ -38,7 +39,6 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info(f"User: {update.message.text}")
     
     reply = await context.bot.send_message(chat_id=chat_id, text="生成中......")
-    await context.bot.send_chat_action(chat_id=chat_id, action="typing")
     reply_id = reply.message_id
     lastest_message_id[chat_id] = reply_id
     
@@ -115,6 +115,7 @@ async def next_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
     query = update.callback_query
+    print(query)
     if query.data == "retry_button":
         await retry(update, context)
     if query.data == "last_button":
@@ -124,6 +125,8 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == "empty":
         pass
 
+async def empty(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return
 
 if __name__ == '__main__':
     with open('config.json', 'r', encoding="utf-8") as f:
@@ -137,9 +140,8 @@ if __name__ == '__main__':
     
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('new', new))
-    application.add_handler(MessageHandler(filters.Regex("新建对话"), new))
+    application.add_handler(MessageHandler(filters.UpdateType.EDITED_MESSAGE, empty))
     application.add_handler(MessageHandler(filters.TEXT, chat))
-    application.add_handler(CallbackQueryHandler(button))
-    
+    application.add_handler(CallbackQueryHandler(button))    
     
     application.run_polling()
