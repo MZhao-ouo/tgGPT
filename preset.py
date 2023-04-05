@@ -31,3 +31,5 @@ retry_btn_end = InlineKeyboardMarkup([
         ]
     ]
 )
+
+random_text = ["你好呀！", "我是一个机器人。", "我很勇敢哦", "好啦", "你超勇的嘛", "Design by MZhao", "你可以先体验一下"]

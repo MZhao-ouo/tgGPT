@@ -34,6 +34,10 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
     if chat_id in lastest_message_id:
         await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=lastest_message_id[chat_id], reply_markup=None)
+    if chat_id in config["whitelist"]:
+        flag = True
+    else:
+        flag = False
 
     ai_clients[chat_id].messages.append({"role": "user", "content": update.message.text})
     logging.info(f"User: {update.message.text}")
@@ -43,7 +47,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lastest_message_id[chat_id] = reply_id
     
     reply_text = ""
-    reply_chunks = get_reply_chunks(ai_clients[chat_id])
+    reply_chunks = get_reply_chunks(ai_clients[chat_id], flag)
     index = 0
     for chunk in reply_chunks:
         index += 1
@@ -51,7 +55,8 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if index % 16 == 0:
             await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id)
     if index % 16 != 0:
-        await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id, reply_markup=accomplished_btn)
+        await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id)
+    await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=reply_id, reply_markup=accomplished_btn)
     
     ai_clients[chat_id].messages.append({"role": "assistant", "content": reply_text})
     retry_replies[chat_id] = [reply_text]
@@ -61,12 +66,16 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
 async def retry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
+    if chat_id in config["whitelist"]:
+        flag = True
+    else:
+        flag = False
     reply_id = update.callback_query.message.message_id
     ai_clients[chat_id].messages.pop()
     
     reply_text = ""
     await context.bot.edit_message_text("重试中......", chat_id=chat_id, message_id=reply_id)
-    reply_chunks = get_reply_chunks(ai_clients[chat_id])
+    reply_chunks = get_reply_chunks(ai_clients[chat_id], flag)
     index = 0
     for chunk in reply_chunks:
         index += 1
@@ -74,7 +83,8 @@ async def retry(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if index % 16 == 0:
             await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id)
     if index % 16 != 0:
-        await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id, reply_markup=retry_btn_end)
+        await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id)
+    await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=reply_id, reply_markup=retry_btn_end)
     
     ai_clients[chat_id].messages.append({"role": "assistant", "content": reply_text})
     retry_replies[chat_id].append(reply_text)
@@ -115,7 +125,6 @@ async def next_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
     query = update.callback_query
-    print(query)
     if query.data == "retry_button":
         await retry(update, context)
     if query.data == "last_button":
@@ -131,6 +140,7 @@ async def empty(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == '__main__':
     with open('config.json', 'r', encoding="utf-8") as f:
         config = json.load(f)
+    
     ai_clients = {}
     lastest_message_id = {}
     retry_replies = {}
