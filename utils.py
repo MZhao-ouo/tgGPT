@@ -1,5 +1,5 @@
 from openai_func import OpenAIClient, decode_chat_response
-from preset import random_text
+from preset import random_text, config
 from telegram import Update
 from telegram.ext import ContextTypes
 import random, logging
@@ -26,3 +26,21 @@ async def clean_markup(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
     
 
+async def edit_reply(client: OpenAIClient, context: ContextTypes.DEFAULT_TYPE, chat_id: int, reply_id: int, reply_markup):
+    if chat_id in config["whitelist"]:
+        flag = True
+    else:
+        flag = False
+    reply_text = ""
+    reply_chunks = get_reply_chunks(client, flag)
+    index = 0
+    for chunk in reply_chunks:
+        index += 1
+        reply_text += chunk
+        if index % 16 == 0:
+            await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id)
+    if index % 16 != 0:
+        await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id, parse_mode="Markdown")
+    await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=reply_id, reply_markup=reply_markup)
+    
+    return reply_text
