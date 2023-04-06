@@ -1,10 +1,10 @@
-import logging, json
+import logging, json, asyncio
 from telegram import Update
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, CallbackQueryHandler, filters, CallbackContext
 from openai_func import OpenAIClient
 from preset import *
-from utils import get_reply_chunks
+from utils import get_reply_chunks, clean_markup
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -22,7 +22,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def new(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
     ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
-    del lastest_message_id[chat_id]
     
     await context.bot.send_message(chat_id=update.effective_chat.id, text="新建对话成功！")
     
@@ -30,10 +29,10 @@ async def new(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
     await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+    
     if chat_id not in ai_clients:
         ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
-    if chat_id in lastest_message_id:
-        await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=lastest_message_id[chat_id], reply_markup=None)
+        
     if chat_id in config["whitelist"]:
         flag = True
     else:
@@ -41,10 +40,13 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     ai_clients[chat_id].messages.append({"role": "user", "content": update.message.text})
     logging.info(f"User: {update.message.text}")
+    update.message.from_user.is_bot
     
-    reply = await context.bot.send_message(chat_id=chat_id, text="生成中......")
-    reply_id = reply.message_id
-    lastest_message_id[chat_id] = reply_id
+    clean_markup_task = asyncio.create_task(clean_markup(update, context))
+    send_message_task = asyncio.create_task(context.bot.send_message(chat_id=chat_id, text="生成中......"))
+    await asyncio.gather(clean_markup_task, send_message_task)
+    
+    reply_id = send_message_task.result().message_id
     
     reply_text = ""
     reply_chunks = get_reply_chunks(ai_clients[chat_id], flag)
@@ -142,7 +144,6 @@ if __name__ == '__main__':
         config = json.load(f)
     
     ai_clients = {}
-    lastest_message_id = {}
     retry_replies = {}
     retry_index = {}
     

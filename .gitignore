@@ -131,4 +131,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Custom
 config.json
+message_example
