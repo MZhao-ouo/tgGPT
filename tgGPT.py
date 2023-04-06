@@ -28,6 +28,7 @@ async def new(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
+    lastest_user_msg_id[chat_id] = update.message.message_id
     await context.bot.send_chat_action(chat_id=chat_id, action="typing")
     
     if chat_id not in ai_clients:
@@ -40,7 +41,6 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     ai_clients[chat_id].messages.append({"role": "user", "content": update.message.text})
     logging.info(f"User: {update.message.text}")
-    update.message.from_user.is_bot
     
     clean_markup_task = asyncio.create_task(clean_markup(update, context))
     send_message_task = asyncio.create_task(context.bot.send_message(chat_id=chat_id, text="生成中......"))
@@ -94,6 +94,40 @@ async def retry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info(f"Retry reply: {reply_text}")
 
 
+async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id=update.effective_chat.id
+    editted_msg = update.edited_message
+    if lastest_user_msg_id[chat_id] is None or editted_msg.id != lastest_user_msg_id[chat_id]:
+        return
+    
+    if chat_id in config["whitelist"]:
+        flag = True
+    else:
+        flag = False
+    reply_id = editted_msg.message_id + 1
+    ai_clients[chat_id].messages = ai_clients[chat_id].messages[:-2]
+    ai_clients[chat_id].messages.append({"role": "user", "content": editted_msg.text})
+    
+    await context.bot.edit_message_text("生成中......", chat_id=chat_id, message_id=reply_id)
+    reply_chunks = get_reply_chunks(ai_clients[chat_id], flag)
+    
+    reply_text = ""
+    index = 0
+    for chunk in reply_chunks:
+        index += 1
+        reply_text += chunk
+        if index % 16 == 0:
+            await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id)
+    if index % 16 != 0:
+        await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id, parse_mode="Markdown")
+    await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=reply_id, reply_markup=accomplished_btn)
+    
+    ai_clients[chat_id].messages.append({"role": "assistant", "content": reply_text})
+    retry_replies[chat_id] = [reply_text]
+    retry_index[chat_id] = 0
+    logging.info(f"Reply: {reply_text}")
+    
+
 async def last_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
     reply_id = update.callback_query.message.message_id
@@ -144,6 +178,7 @@ if __name__ == '__main__':
         config = json.load(f)
     
     ai_clients = {}
+    lastest_user_msg_id = {}
     retry_replies = {}
     retry_index = {}
     
@@ -151,7 +186,7 @@ if __name__ == '__main__':
     
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('new', new))
-    application.add_handler(MessageHandler(filters.UpdateType.EDITED_MESSAGE, empty))
+    application.add_handler(MessageHandler(filters.UpdateType.EDITED_MESSAGE, edit))
     application.add_handler(MessageHandler(filters.TEXT, chat))
     application.add_handler(CallbackQueryHandler(button))    
     
