@@ -4,7 +4,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton,
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, CallbackQueryHandler, filters, CallbackContext
 from openai_func import OpenAIClient
 from preset import *
-from utils import get_reply_chunks, clean_markup, edit_reply
+from utils import clean_markup, edit_reply
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -14,24 +14,59 @@ logging.basicConfig(
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
-    new(update, context)
+    new_chat(update, context)
     
     await context.bot.send_message(chat_id=chat_id, text="欢迎使用tgGPT！", reply_markup=None)
     
 
-async def new(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def new_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
     ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
-    
+    ai_clients[chat_id].mode = "chat"
+    await clean_markup(update, context)
     await context.bot.send_message(chat_id=update.effective_chat.id, text="新建对话成功！")
+    
+    
+async def new_qa(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id=update.effective_chat.id
+    ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
+    ai_clients[chat_id].mode = "qa"
+    await clean_markup(update, context)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="已切换至问答模式（单次对话）！", reply_markup=None)
+    
+
+async def set_system_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id=update.effective_chat.id
+    if chat_id not in ai_clients:
+        ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
+    ai_clients[chat_id].messages[0] = {"role": "system", "content": update.message.text}
+    
+    
+async def qa(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id=update.effective_chat.id
+    lastest_user_msg_id[chat_id] = update.message.message_id
+    await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+
+    ai_clients[chat_id].messages = [ai_clients[chat_id].messages[0], {"role": "user", "content": update.message.text}]
+    logging.info(f"User: {update.message.text}")
+    
+    clean_markup_task = asyncio.create_task(clean_markup(update, context))
+    send_message_task = asyncio.create_task(context.bot.send_message(chat_id=chat_id, text="生成中......"))
+    await asyncio.gather(clean_markup_task, send_message_task)
+    
+    reply_id = send_message_task.result().message_id
+    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, qa_acc_btn)
+    
+    ai_clients[chat_id].messages.append({"role": "assistant", "content": reply_text})
+    retry_replies[chat_id] = [reply_text]
+    retry_index[chat_id] = 0
+    logging.info(f"Reply: {reply_text}")
     
     
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
     lastest_user_msg_id[chat_id] = update.message.message_id
     await context.bot.send_chat_action(chat_id=chat_id, action="typing")
-    if chat_id not in ai_clients:
-        ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
 
     ai_clients[chat_id].messages.append({"role": "user", "content": update.message.text})
     logging.info(f"User: {update.message.text}")
@@ -41,7 +76,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await asyncio.gather(clean_markup_task, send_message_task)
     
     reply_id = send_message_task.result().message_id
-    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, accomplished_btn)
+    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, chat_acc_btn)
     
     ai_clients[chat_id].messages.append({"role": "assistant", "content": reply_text})
     retry_replies[chat_id] = [reply_text]
@@ -61,7 +96,7 @@ async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await context.bot.edit_message_text("生成中......", chat_id=chat_id, message_id=reply_id)
     
-    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, accomplished_btn)
+    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, chat_acc_btn)
     
     ai_clients[chat_id].messages.append({"role": "assistant", "content": reply_text})
     retry_replies[chat_id] = [reply_text]
@@ -80,14 +115,14 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if query.data == "next_button":
             await next_reply(update, context)
         if query.data == "new":
-            await new(update, context)
+            await new_chat(update, context)
         if query.data == "empty":
             pass
     except:
         logging.debug("Button error")
         await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=query.message.message_id, reply_markup=None)
     
-    
+
 async def retry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
     reply_id = update.callback_query.message.message_id
@@ -135,6 +170,19 @@ async def next_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.edit_message_text(next_reply_text, chat_id=chat_id, message_id=reply_id, reply_markup=reply_btn)
 
 
+async def response_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id=update.effective_chat.id
+    if chat_id not in ai_clients:
+        ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
+        
+    if ai_clients[chat_id].mode == "qa":
+        await qa(update, context)
+    elif ai_clients[chat_id].mode == "chat":
+        await chat(update, context)
+
+async def response_edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return
+
 async def empty(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return
 
@@ -142,9 +190,11 @@ if __name__ == '__main__':
     application = ApplicationBuilder().token(config["bot_token"]).build()
     
     application.add_handler(CommandHandler('start', start))
-    application.add_handler(CommandHandler('new', new))
+    application.add_handler(CommandHandler('new_chat', new_chat))
+    application.add_handler(CommandHandler('new_qa', new_qa))
+    application.add_handler(CommandHandler('system_prompt', set_system_prompt))
     application.add_handler(MessageHandler(filters.UpdateType.EDITED_MESSAGE, edit))
-    application.add_handler(MessageHandler(filters.TEXT, chat))
+    application.add_handler(MessageHandler(filters.TEXT, response_text))
     application.add_handler(CallbackQueryHandler(button))    
     
     application.run_polling()

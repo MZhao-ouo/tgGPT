@@ -9,13 +9,20 @@ lastest_user_msg_id = {}
 retry_replies = {}
 retry_index = {}
 
-accomplished_btn = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("🔁 重试", callback_data="retry_button"),
-                InlineKeyboardButton("🧹 新对话", callback_data="new")
-            ]
+chat_acc_btn = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("🔁 重试", callback_data="retry_button"),
+            InlineKeyboardButton("🧹 新对话", callback_data="new_chat")
         ]
-    )
+    ]
+)
+
+qa_acc_btn = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("🔁 重试（当前处于问答模式）", callback_data="retry_button")
+        ]
+    ]
+)
 
 retry_btn_all = InlineKeyboardMarkup([
         [
@@ -24,7 +31,7 @@ retry_btn_all = InlineKeyboardMarkup([
         ],
         [
             InlineKeyboardButton("🔁 重试", callback_data="retry_button"),
-            InlineKeyboardButton("🧹 新对话", callback_data="new")
+            InlineKeyboardButton("🧹 新对话", callback_data="new_chat")
         ]
     ]
 )
@@ -36,7 +43,7 @@ retry_btn_start = InlineKeyboardMarkup([
         ],
         [
             InlineKeyboardButton("🔁 重试", callback_data="retry_button"),
-            InlineKeyboardButton("🧹 新对话", callback_data="new")
+            InlineKeyboardButton("🧹 新对话", callback_data="new_chat")
         ]
     ]
 )
@@ -48,7 +55,7 @@ retry_btn_end = InlineKeyboardMarkup([
         ],
         [
             InlineKeyboardButton("🔁 重试", callback_data="retry_button"),
-            InlineKeyboardButton("🧹 新对话", callback_data="new")
+            InlineKeyboardButton("🧹 新对话", callback_data="new_chat")
         ]
     ]
 )

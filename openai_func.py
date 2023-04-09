@@ -14,6 +14,7 @@ class OpenAIClient():
         self.messages = [
             {"role": "system", "content": "You are a helpful assistant."}
         ]
+        self.mode = "chat"  # "chat" or "qa"
 
     def get_chat_response(self):
         payload = {
