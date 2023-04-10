@@ -1,10 +1,10 @@
-import requests, json
+import requests, json, datetime
 
 class OpenAIClient():
     def __init__(self, api_key) -> None:
         self.api_key = api_key
         self.chat_url = "https://api.openai.com/v1/chat/completions"
-        self.billing_url = "https://api.openai.com/v1/billing"
+        self.usage_url = "https://api.openai.com/dashboard/billing/usage"
         self.headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}"
@@ -26,8 +26,8 @@ class OpenAIClient():
         }
         return requests.post(self.chat_url, headers=self.headers, json=payload, stream=True)
 
-    def get_billing_data(self):
-        response = requests.get(self.billing_url, headers=self.headers)
+    def get_billing_data(self, suffix_url=""):
+        response = requests.get(self.usage_url+suffix_url, headers=self.headers)
         if response.status_code == 200:
             data = response.json()
             return data
@@ -54,3 +54,19 @@ def decode_chat_response(response):
                 except Exception as e:
                     # logging.error(f"Error: {e}")
                     continue
+
+def get_usage(ai_client: OpenAIClient, start_date=None, end_date=None):
+    # date的格式是YYYY-MM-DD
+    if start_date is None and end_date is None:
+        end_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        start_date = datetime.datetime.now().replace(day=1).strftime("%Y-%m-%d")
+    elif start_date is None:
+        start_date = datetime.datetime.strptime(end_date, "%Y-%m-%d")
+    elif end_date is None:
+        end_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        
+    suffix_url = f"?start_date={start_date}&end_date={end_date}"
+    billing_data = ai_client.get_billing_data(suffix_url)
+    total_usage = billing_data['total_usage'] / 100
+    
+    return  total_usage, start_date, end_date

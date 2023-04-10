@@ -1,4 +1,4 @@
-from telegram import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 import json
 
 with open('config.json', 'r', encoding="utf-8") as f:
@@ -8,6 +8,14 @@ ai_clients = {}
 lastest_user_msg_id = {}
 retry_replies = {}
 retry_index = {}
+
+cmds_list = [
+    BotCommand("start", "重置"),
+    BotCommand("new_chat", "新建聊天"),
+    BotCommand("new_qa", "新建问答"),
+    BotCommand("usage", "查看用量"),
+    BotCommand("system_prompt", "设置系统提示")
+]
 
 chat_acc_btn = InlineKeyboardMarkup([
         [

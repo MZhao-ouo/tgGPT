@@ -2,7 +2,7 @@ import logging, json, asyncio
 from telegram import Update
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, CallbackQueryHandler, filters, CallbackContext
-from openai_func import OpenAIClient
+from openai_func import OpenAIClient, get_usage
 from preset import *
 from utils import clean_markup, edit_reply
 
@@ -11,10 +11,10 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
-    new_chat(update, context)
+    await new_chat(update, context)
+    await context.bot.set_my_commands(cmds_list)
     
     await context.bot.send_message(chat_id=chat_id, text="欢迎使用tgGPT！", reply_markup=None)
     
@@ -33,6 +33,17 @@ async def new_qa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ai_clients[chat_id].mode = "qa"
     await clean_markup(update, context)
     await context.bot.send_message(chat_id=update.effective_chat.id, text="已切换至问答模式（单次对话）！", reply_markup=None)
+
+
+async def usage(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id=update.effective_chat.id
+    if chat_id not in ai_clients:
+        ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
+    delete_cmd_task = asyncio.create_task(context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id))
+    total_usage, start_date, end_date = get_usage(ai_clients[chat_id])
+    usage_text = f"{start_date}~{end_date}：\n```{total_usage}$```"
+    usage_reply_task = asyncio.create_task(context.bot.send_message(chat_id=chat_id, text=usage_text, parse_mode="Markdown"))
+    await asyncio.gather(delete_cmd_task, usage_reply_task)
     
 
 async def set_system_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -179,12 +190,16 @@ async def response_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await qa(update, context)
     elif ai_clients[chat_id].mode == "chat":
         await chat(update, context)
-
-async def response_edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    return
+        
 
 async def empty(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return
+
+async def update_usage(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id=update.effective_chat.id
+    total_usage, start_date, end_date = get_usage(ai_clients[chat_id])
+    cmds_list[3] = BotCommand("usage", f"{round(total_usage, 4)}$")
+    await context.bot.set_my_commands(cmds_list)
 
 if __name__ == '__main__':    
     application = ApplicationBuilder().token(config["bot_token"]).build()
@@ -192,9 +207,12 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('new_chat', new_chat))
     application.add_handler(CommandHandler('new_qa', new_qa))
+    usage_handler = CommandHandler('usage', usage)
+    usage_handler.callback = update_usage
+    application.add_handler(usage_handler)
     application.add_handler(CommandHandler('system_prompt', set_system_prompt))
     application.add_handler(MessageHandler(filters.UpdateType.EDITED_MESSAGE, edit))
     application.add_handler(MessageHandler(filters.TEXT, response_text))
-    application.add_handler(CallbackQueryHandler(button))    
+    application.add_handler(CallbackQueryHandler(button))
     
     application.run_polling()
