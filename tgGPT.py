@@ -13,10 +13,9 @@ logging.basicConfig(
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
+    await context.bot.send_message(chat_id=chat_id, text="欢迎使用tgGPT！", reply_markup=None)
     await new_chat(update, context)
     await context.bot.set_my_commands(cmds_list)
-    
-    await context.bot.send_message(chat_id=chat_id, text="欢迎使用tgGPT！", reply_markup=None)
     
 
 async def new_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
