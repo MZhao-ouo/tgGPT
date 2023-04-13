@@ -41,6 +41,7 @@ async def usage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     delete_cmd_task = asyncio.create_task(context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id))
     total_usage, start_date, end_date = get_usage(ai_clients[chat_id])
     usage_text = f"{start_date}~{end_date}：\n```{total_usage}$```"
+    
     usage_reply_task = asyncio.create_task(context.bot.send_message(chat_id=chat_id, text=usage_text, parse_mode="Markdown"))
     await asyncio.gather(delete_cmd_task, usage_reply_task)
     
@@ -61,7 +62,7 @@ async def qa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info(f"User: {update.message.text}")
     
     clean_markup_task = asyncio.create_task(clean_markup(update, context))
-    send_message_task = asyncio.create_task(context.bot.send_message(chat_id=chat_id, text="生成中......"))
+    send_message_task = asyncio.create_task(context.bot.send_message(chat_id=chat_id, text="生成中……", reply_to_message_id=update.message.message_id))
     await asyncio.gather(clean_markup_task, send_message_task)
     
     reply_id = send_message_task.result().message_id
@@ -104,9 +105,8 @@ async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ai_clients[chat_id].messages = ai_clients[chat_id].messages[:-2]
     ai_clients[chat_id].messages.append({"role": "user", "content": editted_msg.text})
     
-    await context.bot.edit_message_text("生成中......", chat_id=chat_id, message_id=reply_id)
-    
-    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, chat_acc_btn)
+    reply_msg = await context.bot.edit_message_text("生成中......", chat_id=chat_id, message_id=reply_id)
+    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, reply_msg.reply_markup)
     
     ai_clients[chat_id].messages.append({"role": "assistant", "content": reply_text})
     retry_replies[chat_id] = [reply_text]
@@ -120,13 +120,15 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if query.data == "retry_button":
             await retry(update, context)
-        if query.data == "last_button":
+        elif query.data == "last_button":
             await last_reply(update, context)
-        if query.data == "next_button":
+        elif query.data == "next_button":
             await next_reply(update, context)
-        if query.data == "new":
+        elif query.data == "new":
             await new_chat(update, context)
-        if query.data == "empty":
+        elif query.data == "qa2chat":
+            await qa2chat(update, context)
+        elif query.data == "empty":
             pass
     except:
         logging.debug("Button error")
@@ -178,17 +180,24 @@ async def next_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     next_reply_text = retry_replies[chat_id][retry_index[chat_id]]
     ai_clients[chat_id].messages[-1]["content"] = next_reply_text
     await context.bot.edit_message_text(next_reply_text, chat_id=chat_id, message_id=reply_id, reply_markup=reply_btn)
+    
+
+async def qa2chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id=update.effective_chat.id
+    ai_clients[chat_id].mode = "chat"
+    await context.bot.send_message(chat_id=chat_id, text="已切换到Chat模式，可继续对话。")
+    await clean_markup(update, context)
 
 
 async def response_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
     if chat_id not in ai_clients:
         ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
-        
     if ai_clients[chat_id].mode == "qa":
         await qa(update, context)
     elif ai_clients[chat_id].mode == "chat":
         await chat(update, context)
+    await update_usage(update, context)
         
 
 async def empty(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -196,7 +205,7 @@ async def empty(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def update_usage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
-    total_usage, start_date, end_date = get_usage(ai_clients[chat_id])
+    total_usage = get_usage(ai_clients[chat_id])[0]
     cmds_list[3] = BotCommand("usage", f"{round(total_usage, 4)}$")
     await context.bot.set_my_commands(cmds_list)
 
@@ -206,12 +215,13 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('new_chat', new_chat))
     application.add_handler(CommandHandler('new_qa', new_qa))
-    usage_handler = CommandHandler('usage', usage)
-    usage_handler.callback = update_usage
-    application.add_handler(usage_handler)
+    application.add_handler(CommandHandler('usage', usage))
     application.add_handler(CommandHandler('system_prompt', set_system_prompt))
+    
     application.add_handler(MessageHandler(filters.UpdateType.EDITED_MESSAGE, edit))
     application.add_handler(MessageHandler(filters.TEXT, response_text))
+    
+    
     application.add_handler(CallbackQueryHandler(button))
     
     application.run_polling()
