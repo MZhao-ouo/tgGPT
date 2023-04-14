@@ -14,7 +14,7 @@ cmds_list = [
     BotCommand("new_chat", "新建聊天"),
     BotCommand("new_qa", "新建问答"),
     BotCommand("usage", "查看用量"),
-    BotCommand("system_prompt", "设置系统提示")
+    BotCommand("sys_prompt", "设置系统提示")
 ]
 
 retry_btn = InlineKeyboardButton("🔁 重试", callback_data="retry_button")

@@ -50,7 +50,22 @@ async def set_system_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
     if chat_id not in ai_clients:
         ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
-    ai_clients[chat_id].messages[0] = {"role": "system", "content": update.message.text}
+    edit_message_id= None
+    try:
+        system_prompt = " ".join(update.message.text.split(" ")[1:])
+    except:
+        system_prompt = " ".join(update.edited_message.text.split(" ")[1:])
+        edit_message_id = update.edited_message.message_id + 1
+    if system_prompt == "":
+        reply_text = f"当前System Prompt: \n`{ai_clients[chat_id].messages[0]['content']}`\n如需更换System Prompt，请使用`/set_system_prompt <system_prompt>`"
+    else:
+        ai_clients[chat_id].messages[0] = {"role": "system", "content": system_prompt}
+        reply_text = f"System Prompt已设置为：\n`{system_prompt}`"
+    if edit_message_id is None:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=reply_text, parse_mode="Markdown", reply_to_message_id=update.message.message_id)
+    else:
+        await context.bot.edit_message_text(reply_text, chat_id=update.effective_chat.id, message_id= edit_message_id, parse_mode="Markdown")
+
     
     
 async def qa(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -215,7 +230,7 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler('new_chat', new_chat))
     application.add_handler(CommandHandler('new_qa', new_qa))
     application.add_handler(CommandHandler('usage', usage))
-    application.add_handler(CommandHandler('system_prompt', set_system_prompt))
+    application.add_handler(CommandHandler('sys_prompt', set_system_prompt))
     
     application.add_handler(MessageHandler(filters.UpdateType.EDITED_MESSAGE, edit))
     application.add_handler(MessageHandler(filters.TEXT, response_text))
