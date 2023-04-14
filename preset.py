@@ -82,7 +82,9 @@ def get_retry_btn_end(cli_mode):
     
 models_btn = InlineKeyboardMarkup([
     [ InlineKeyboardButton("🤖 gpt-3.5-turbo", callback_data="gpt-3.5-turbo") ],
+    [ InlineKeyboardButton("🤖 gpt-3.5-turbo-0301", callback_data="gpt-3.5-turbo-0301") ],
     [ InlineKeyboardButton("🤖 gpt-4", callback_data="gpt-4") ],
+    [ InlineKeyboardButton("🤖 gpt-4-0314", callback_data="gpt-4-0314") ],
 ])
 
 random_text = ["你好呀！", "我是一个机器人。", "我很勇敢哦", "好啦", "你超勇的嘛", "Design by MZhao", "你可以先体验一下"]
