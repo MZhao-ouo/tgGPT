@@ -23,7 +23,7 @@ async def new_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
     ai_clients[chat_id].mode = "chat"
     await clean_markup(update, context)
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="新建对话成功！")
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=f"新建对话💬当前模型: {ai_clients[chat_id].model}", reply_markup=models_btn)
     
     
 async def new_qa(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -31,7 +31,7 @@ async def new_qa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
     ai_clients[chat_id].mode = "qa"
     await clean_markup(update, context)
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="已切换至问答模式（单次对话）！", reply_markup=None)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=f"单次问答🚀当前模型: {ai_clients[chat_id].model}", reply_markup=models_btn)
 
 
 async def usage(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -131,6 +131,7 @@ async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     query = update.callback_query
+    logging.info(f"Button: {query.data}")
     try:
         if query.data == "retry_button":
             await retry(update, context)
@@ -142,6 +143,8 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await new_chat(update, context)
         elif query.data == "qa2chat":
             await qa2chat(update, context)
+        elif query.data in ["gpt-3.5-turbo", "gpt-4"]:
+            await change_model(update, context)
         elif query.data == "empty":
             pass
     except:
@@ -212,6 +215,16 @@ async def response_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif ai_clients[chat_id].mode == "chat":
         await chat(update, context)
     await update_usage(update, context)
+    
+async def change_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id=update.effective_chat.id
+    query = update.callback_query
+    if ai_clients[chat_id].model == query.data:
+        return
+    ai_clients[chat_id].model = query.data
+    # await context.bot.send_message(chat_id=chat_id, text=f"已切换至{ai_clients[chat_id].model}模型", reply_markup=None)
+    original_text = query.message.text[:11]
+    await context.bot.edit_message_text(original_text+ai_clients[chat_id].model, chat_id, query.message.message_id, reply_markup=models_btn)
         
 
 async def empty(update: Update, context: ContextTypes.DEFAULT_TYPE):

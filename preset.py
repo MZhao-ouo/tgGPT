@@ -10,11 +10,11 @@ retry_replies = {}
 retry_index = {}
 
 cmds_list = [
-    BotCommand("start", "重置"),
-    BotCommand("new_chat", "新建聊天"),
-    BotCommand("new_qa", "新建问答"),
-    BotCommand("usage", "查看用量"),
-    BotCommand("sys_prompt", "设置系统提示")
+    BotCommand("start", "🔁重置"),
+    BotCommand("new_chat", "💬新建对话（可选model）"),
+    BotCommand("new_qa", "🚀新建问答（可选model）"),
+    BotCommand("usage", "🔋查看用量"),
+    BotCommand("sys_prompt", "🤖设置系统提示"),
 ]
 
 retry_btn = InlineKeyboardButton("🔁 重试", callback_data="retry_button")
@@ -79,5 +79,10 @@ def get_retry_btn_end(cli_mode):
         ])
     else:
         return None
+    
+models_btn = InlineKeyboardMarkup([
+    [ InlineKeyboardButton("🤖 gpt-3.5-turbo", callback_data="gpt-3.5-turbo") ],
+    [ InlineKeyboardButton("🤖 gpt-4", callback_data="gpt-4") ],
+])
 
 random_text = ["你好呀！", "我是一个机器人。", "我很勇敢哦", "好啦", "你超勇的嘛", "Design by MZhao", "你可以先体验一下"]
