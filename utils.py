@@ -34,11 +34,13 @@ async def edit_reply(client: OpenAIClient, context: ContextTypes.DEFAULT_TYPE, c
     reply_text = ""
     reply_chunks = get_reply_chunks(client, flag)
     index = 0
+    edit_value = 4
     for chunk in reply_chunks:
         index += 1
         reply_text += chunk
-        if index % 16 == 0:
+        if index % edit_value == 0:
             await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id)
+            edit_value = min(edit_value * 2, 32)
     try:
         await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id, parse_mode="Markdown", reply_markup=reply_markup)
     except Exception as e:
