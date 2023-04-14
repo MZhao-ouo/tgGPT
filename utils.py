@@ -39,7 +39,10 @@ async def edit_reply(client: OpenAIClient, context: ContextTypes.DEFAULT_TYPE, c
         index += 1
         reply_text += chunk
         if index % edit_value == 0:
-            await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id)
+            md_end = ""
+            if reply_text.count("```") % 2 == 1:
+                md_end = "\n```\n"
+            await context.bot.edit_message_text(reply_text + md_end, chat_id=chat_id, message_id=reply_id, parse_mode="Markdown")
             edit_value = min(edit_value * 2, 32)
     try:
         await context.bot.edit_message_text(reply_text, chat_id=chat_id, message_id=reply_id, parse_mode="Markdown", reply_markup=reply_markup)
