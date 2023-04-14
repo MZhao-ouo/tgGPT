@@ -143,7 +143,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await new_chat(update, context)
         elif query.data == "qa2chat":
             await qa2chat(update, context)
-        elif query.data in ["gpt-3.5-turbo", "gpt-4"]:
+        elif query.data in ["gpt-3.5-turbo", "gpt-3.5-turbo-0301", "gpt-4", "gpt-4-0314"]:
             await change_model(update, context)
         elif query.data == "empty":
             pass
