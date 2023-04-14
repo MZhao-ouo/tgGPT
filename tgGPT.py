@@ -102,11 +102,16 @@ async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     reply_id = editted_msg.message_id + 1
-    ai_clients[chat_id].messages = ai_clients[chat_id].messages[:-2]
-    ai_clients[chat_id].messages.append({"role": "user", "content": editted_msg.text})
+    ai_clients[chat_id].messages = ai_clients[chat_id].messages[:-2] + [{"role": "user", "content": editted_msg.text}]
+    if ai_clients[chat_id].mode == "qa":
+        reply_markup = qa_acc_btn
+    elif ai_clients[chat_id].mode == "chat":
+        reply_markup = chat_acc_btn
+    else:
+        reply_markup = None
     
-    reply_msg = await context.bot.edit_message_text("生成中......", chat_id=chat_id, message_id=reply_id)
-    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, reply_msg.reply_markup)
+    await context.bot.edit_message_text("生成中......", chat_id=chat_id, message_id=reply_id)
+    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, reply_markup)
     
     ai_clients[chat_id].messages.append({"role": "assistant", "content": reply_text})
     retry_replies[chat_id] = [reply_text]
