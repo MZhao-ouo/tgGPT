@@ -66,7 +66,7 @@ async def qa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await asyncio.gather(clean_markup_task, send_message_task)
     
     reply_id = send_message_task.result().message_id
-    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, qa_acc_btn)
+    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, get_acc_btn(ai_clients[chat_id].mode))
     
     ai_clients[chat_id].messages.append({"role": "assistant", "content": reply_text})
     retry_replies[chat_id] = [reply_text]
@@ -87,7 +87,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await asyncio.gather(clean_markup_task, send_message_task)
     
     reply_id = send_message_task.result().message_id
-    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, chat_acc_btn)
+    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, get_acc_btn(ai_clients[chat_id].mode))
     
     ai_clients[chat_id].messages.append({"role": "assistant", "content": reply_text})
     retry_replies[chat_id] = [reply_text]
@@ -103,15 +103,9 @@ async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_id = editted_msg.message_id + 1
     ai_clients[chat_id].messages = ai_clients[chat_id].messages[:-2] + [{"role": "user", "content": editted_msg.text}]
-    if ai_clients[chat_id].mode == "qa":
-        reply_markup = qa_acc_btn
-    elif ai_clients[chat_id].mode == "chat":
-        reply_markup = chat_acc_btn
-    else:
-        reply_markup = None
     
     await context.bot.edit_message_text("生成中......", chat_id=chat_id, message_id=reply_id)
-    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, reply_markup)
+    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, get_acc_btn(ai_clients[chat_id].mode))
     
     ai_clients[chat_id].messages.append({"role": "assistant", "content": reply_text})
     retry_replies[chat_id] = [reply_text]
@@ -149,7 +143,7 @@ async def retry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.edit_message_text("重试中......", chat_id=chat_id, message_id=reply_id)
 
     ai_clients[chat_id].messages.pop()
-    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, retry_btn_end)
+    reply_text = await edit_reply(ai_clients[chat_id], context, chat_id, reply_id, get_retry_btn_end(ai_clients[chat_id].mode))
     
     ai_clients[chat_id].messages.append({"role": "assistant", "content": reply_text})
     retry_replies[chat_id].append(reply_text)
@@ -163,9 +157,9 @@ async def last_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     retry_index[chat_id] -= 1
     
     if retry_index[chat_id] == 0:
-        reply_btn = retry_btn_start
+        reply_btn = get_retry_btn_start(ai_clients[chat_id].mode)
     else:
-        reply_btn = retry_btn_all
+        reply_btn = get_retry_btn_all(ai_clients[chat_id].mode)
         
     last_reply_text = retry_replies[chat_id][retry_index[chat_id]]
     ai_clients[chat_id].messages[-1]["content"] = last_reply_text
@@ -178,9 +172,9 @@ async def next_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     retry_index[chat_id] += 1
     
     if retry_index[chat_id] == len(retry_replies[chat_id]) - 1:
-        reply_btn = retry_btn_end
+        reply_btn = get_retry_btn_end(ai_clients[chat_id].mode)
     else:
-        reply_btn = retry_btn_all
+        reply_btn = get_retry_btn_all(ai_clients[chat_id].mode)
     
     next_reply_text = retry_replies[chat_id][retry_index[chat_id]]
     ai_clients[chat_id].messages[-1]["content"] = next_reply_text

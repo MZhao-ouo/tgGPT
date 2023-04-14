@@ -25,27 +25,59 @@ next_btn = InlineKeyboardButton("➡️", callback_data="next_button")
 isbegin_btn = InlineKeyboardButton("已至开头", callback_data="empty")
 isend_btn = InlineKeyboardButton("已至末尾", callback_data="empty")
 
-chat_acc_btn = InlineKeyboardMarkup([
-    [ retry_btn, new_chat_btn ]
-])
 
-qa_acc_btn = InlineKeyboardMarkup([
-    [ retry_btn, qa2chat_btn ]
-])
+def get_acc_btn(cli_mode):
+    if cli_mode == "chat":
+        return InlineKeyboardMarkup([
+            [ retry_btn, new_chat_btn ]
+        ])
+    elif cli_mode == "qa":
+        return InlineKeyboardMarkup([
+            [ retry_btn, qa2chat_btn ]
+        ])
+    else:
+        return None
 
-retry_btn_all = InlineKeyboardMarkup([
-    [ last_btn, next_btn ],
-    [ retry_btn, new_chat_btn ]
-])
+def get_retry_btn_all(cli_mode):
+    if cli_mode == "chat":
+        return InlineKeyboardMarkup([
+            [ last_btn, next_btn ],
+            [ retry_btn, new_chat_btn ]
+        ])
+    elif cli_mode == "qa":
+        return InlineKeyboardMarkup([
+            [ last_btn, next_btn ],
+            [ retry_btn, qa2chat_btn ]
+        ])
+    else:
+        return None
+    
+def get_retry_btn_start(cli_mode):
+    if cli_mode == "chat":
+        return InlineKeyboardMarkup([
+            [ isbegin_btn, next_btn ],
+            [ retry_btn, new_chat_btn ]
+        ])
+    elif cli_mode == "qa":
+        return InlineKeyboardMarkup([
+            [ isbegin_btn, next_btn ],
+            [ retry_btn, qa2chat_btn ]
+        ])
+    else:
+        return None
 
-retry_btn_start = InlineKeyboardMarkup([
-    [ isbegin_btn, next_btn ],
-    [ retry_btn, new_chat_btn ]
-])
-
-retry_btn_end = InlineKeyboardMarkup([
-    [ last_btn,  isend_btn ],
-    [ retry_btn, new_chat_btn ]
-])
+def get_retry_btn_end(cli_mode):
+    if cli_mode == "chat":
+        return InlineKeyboardMarkup([
+            [ last_btn,  isend_btn ],
+            [ retry_btn, new_chat_btn ]
+        ])
+    elif cli_mode == "qa":
+        return InlineKeyboardMarkup([
+            [ last_btn,  isend_btn ],
+            [ retry_btn, qa2chat_btn ]
+        ])
+    else:
+        return None
 
 random_text = ["你好呀！", "我是一个机器人。", "我很勇敢哦", "好啦", "你超勇的嘛", "Design by MZhao", "你可以先体验一下"]
