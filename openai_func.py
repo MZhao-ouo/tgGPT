@@ -57,13 +57,14 @@ def decode_chat_response(response):
 
 def get_usage(ai_client: OpenAIClient, start_date=None, end_date=None):
     # date的格式是YYYY-MM-DD
+    today = datetime.datetime.now()
     if start_date is None and end_date is None:
-        end_date = datetime.datetime.now().strftime("%Y-%m-%d")
-        start_date = datetime.datetime.now().replace(day=1).strftime("%Y-%m-%d")
+        end_date = today.replace(month=today.month+1).strftime("%Y-%m-%d")
+        start_date = today.replace(day=1).strftime("%Y-%m-%d")
     elif start_date is None:
         start_date = datetime.datetime.strptime(end_date, "%Y-%m-%d")
     elif end_date is None:
-        end_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        end_date = today.strftime("%Y-%m-%d")
         
     suffix_url = f"?start_date={start_date}&end_date={end_date}"
     billing_data = ai_client.get_billing_data(suffix_url)
