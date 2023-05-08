@@ -23,7 +23,7 @@ async def new_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
     ai_clients[chat_id].mode = "chat"
     await clean_markup(update, context)
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=f"新建对话💬当前模型: {ai_clients[chat_id].model}", reply_markup=models_btn)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=f"新建对话💬当前模型: {ai_clients[chat_id].model}\n当前角色：默认", reply_markup=models_btn)
     
     
 async def new_qa(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -31,7 +31,7 @@ async def new_qa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ai_clients[chat_id] = OpenAIClient(config["openai_api_key"])
     ai_clients[chat_id].mode = "qa"
     await clean_markup(update, context)
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=f"单次问答🚀当前模型: {ai_clients[chat_id].model}", reply_markup=models_btn)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=f"单次问答🚀当前模型: {ai_clients[chat_id].model}\n当前角色：默认", reply_markup=models_btn)
 
 
 async def usage(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -66,7 +66,6 @@ async def set_system_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await context.bot.edit_message_text(reply_text, chat_id=update.effective_chat.id, message_id= edit_message_id, parse_mode="Markdown")
 
-    
     
 async def qa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id=update.effective_chat.id
@@ -139,12 +138,16 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await last_reply(update, context)
         elif query.data == "next_button":
             await next_reply(update, context)
-        elif query.data == "new":
+        elif query.data == "new_chat":
             await new_chat(update, context)
         elif query.data == "qa2chat":
             await qa2chat(update, context)
         elif query.data in ["gpt-3.5-turbo", "gpt-3.5-turbo-0301", "gpt-4", "gpt-4-0314"]:
             await change_model(update, context)
+        elif query.data == "select_role":
+            await select_role(update, context)
+        elif "role-" in query.data:
+            await set_role(update, context, query.data.split("-")[1])
         elif query.data == "empty":
             pass
     except:
@@ -226,6 +229,32 @@ async def change_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
     original_text = query.message.text[:11]
     await context.bot.edit_message_text(original_text+ai_clients[chat_id].model, chat_id, query.message.message_id, reply_markup=models_btn)
         
+async def select_role(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id=update.effective_chat.id
+    reply_id = update.callback_query.message.message_id
+        
+    await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=reply_id, reply_markup=get_roles_btn())
+
+async def set_role(update: Update, context: ContextTypes.DEFAULT_TYPE, role: str):
+    chat_id=update.effective_chat.id
+    query = update.callback_query
+    original_text = query.message.text
+
+    if role == "BACK":
+        msg = original_text
+    else:
+        with open("roles.json", "r") as f:
+            roles = json.load(f)
+        for i in roles:
+            if i["act"] == role:
+                system_prompt = i["prompt"]
+                break
+        ai_clients[chat_id].messages[0] = {"role": "system", "content": system_prompt}
+        pre_text = query.message.text.split("\n")[0]
+        msg = f"{pre_text}\n当前角色：{role}"
+
+    await context.bot.edit_message_text(msg, chat_id, query.message.message_id, reply_markup=models_btn)
+    
 
 async def empty(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return

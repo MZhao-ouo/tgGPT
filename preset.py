@@ -80,11 +80,25 @@ def get_retry_btn_end(cli_mode):
     else:
         return None
     
+def get_roles_btn():
+    with open("./src/roles.json", "r", encoding="utf-8") as f:
+        roles = json.load(f)
+    roles_btn = [ [InlineKeyboardButton("🔙 返回上级", callback_data="role-BACK")] ]
+    for i in roles[::2]:
+        btn_name1 = i["act"]
+        btn_name2 = roles[roles.index(i)+1]["act"]
+        roles_btn.append([
+            InlineKeyboardButton(btn_name1, callback_data=f"role-{btn_name1}"),
+            InlineKeyboardButton(btn_name2, callback_data=f"role-{btn_name2}")
+        ])
+    return InlineKeyboardMarkup(roles_btn)
+    
 models_btn = InlineKeyboardMarkup([
     [ InlineKeyboardButton("🤖 gpt-3.5-turbo", callback_data="gpt-3.5-turbo") ],
     [ InlineKeyboardButton("🤖 gpt-3.5-turbo-0301", callback_data="gpt-3.5-turbo-0301") ],
     [ InlineKeyboardButton("🤖 gpt-4", callback_data="gpt-4") ],
     [ InlineKeyboardButton("🤖 gpt-4-0314", callback_data="gpt-4-0314") ],
+    [ InlineKeyboardButton("👾 选择角色", callback_data="select_role") ],
 ])
 
 random_text = ["你好呀！", "我是一个机器人。", "我很勇敢哦", "好啦", "你超勇的嘛", "Design by MZhao", "你可以先体验一下"]
